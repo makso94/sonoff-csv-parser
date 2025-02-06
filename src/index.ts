@@ -72,8 +72,24 @@ fs.createReadStream(absolutePath)
   .pipe(csv())
   .on("data", processRow)
   .on("end", () => {
-    console.log("Low Tariff Consumption:", lowTariffConsumption.toFixed(2));
-    console.log("High Tariff Consumption:", highTariffConsumption.toFixed(2));
+    const totalConsumption = lowTariffConsumption + highTariffConsumption;
+    const lowPercentage = totalConsumption
+      ? ((lowTariffConsumption / totalConsumption) * 100).toFixed(2)
+      : "0.00";
+    const highPercentage = totalConsumption
+      ? ((highTariffConsumption / totalConsumption) * 100).toFixed(2)
+      : "0.00";
+
+    console.log(
+      "Low Tariff Consumption: ",
+      lowTariffConsumption.toFixed(2),
+      `(${lowPercentage}%)`
+    );
+    console.log(
+      "High Tariff Consumption: ",
+      highTariffConsumption.toFixed(2),
+      `(${highPercentage}%)`
+    );
   })
   .on("error", (error) => {
     console.error("Error reading CSV:", error);

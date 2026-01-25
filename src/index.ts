@@ -31,7 +31,7 @@ const isLowTariff = (startHour: number, endHour: number): boolean =>
 const processRow = (row: any): void => {
   try {
     const dateColumn = Object.keys(row)[0];
-    const rowDate = parse(row[dateColumn], "yyyy/M/d", new Date());
+    const rowDate = parse(row[dateColumn], "yyyy-MM-dd", new Date());
 
     // Ensure date is within range
     if (!isWithinInterval(rowDate, { start: START_DATE, end: END_DATE }))

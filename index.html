@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SONOFF Power Meter — Tariff Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --accent-low: #00e5a0;
+    --accent-high: #ff4d6d;
+    --accent-neutral: #4d7cff;
+    --text: #e8eaf0;
+    --text-dim: #6b7280;
+    --text-dimmer: #3d4454;
+    --glow-low: rgba(0, 229, 160, 0.15);
+    --glow-high: rgba(255, 77, 109, 0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+    background-image: radial-gradient(ellipse at 20% 0%, rgba(77, 124, 255, 0.06) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, rgba(0, 229, 160, 0.05) 0%, transparent 60%);
+  }
+
+  header {
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: 48px;
+    padding-top: 12px;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--accent-low), var(--accent-neutral));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(22px, 4vw, 30px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 720px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 32px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+
+  .date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  label {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  input[type="date"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+
+  input[type="date"]:hover {
+    border-color: #3a4057;
+  }
+
+  input[type="date"]:focus {
+    border-color: var(--accent-neutral);
+    box-shadow: 0 0 0 3px rgba(77, 124, 255, 0.12);
+  }
+
+  /* Low tariff ranges */
+  .ranges-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .range-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .range-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-low);
+    flex-shrink: 0;
+    box-shadow: 0 0 8px var(--accent-low);
+  }
+
+  .range-add {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-top: 12px;
+  }
+
+  input[type="number"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--accent-neutral);
+  }
+
+  .btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--accent-low);
+    color: var(--accent-low);
+  }
+
+  /* Upload zone */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    background: var(--surface2);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent-neutral);
+    background: rgba(77, 124, 255, 0.05);
+  }
+
+  .drop-zone.has-file {
+    border-color: var(--accent-low);
+    background: rgba(0, 229, 160, 0.04);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+    transition: transform 0.2s;
+  }
+
+  .drop-zone:hover .drop-icon {
+    transform: translateY(-3px);
+  }
+
+  .drop-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .drop-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .file-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent-low);
+    margin-top: 8px;
+    word-break: break-all;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent-neutral), #6a5aff);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    margin-top: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary:hover::after { opacity: 1; }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Results */
+  .results {
+    width: 100%;
+    max-width: 720px;
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .results.visible { display: flex; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .result-card {
+    border-radius: 16px;
+    padding: 28px 24px;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    border-radius: inherit;
+  }
+
+  .result-card.low {
+    background: linear-gradient(135deg, rgba(0,229,160,0.08), rgba(0,229,160,0.03));
+    border-color: rgba(0, 229, 160, 0.2);
+  }
+
+  .result-card.low::before {
+    background: radial-gradient(circle at top right, var(--accent-low), transparent 70%);
+  }
+
+  .result-card.high {
+    background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,77,109,0.03));
+    border-color: rgba(255, 77, 109, 0.2);
+  }
+
+  .result-card.high::before {
+    background: radial-gradient(circle at top right, var(--accent-high), transparent 70%);
+  }
+
+  .result-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .result-card.low .result-label { color: var(--accent-low); }
+  .result-card.high .result-label { color: var(--accent-high); }
+
+  .result-value {
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+    letter-spacing: -1px;
+  }
+
+  .result-unit {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.6;
+    margin-left: 4px;
+  }
+
+  .result-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+
+  .total-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .total-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .total-value {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  /* Progress bar */
+  .bar-track {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .bar-fill-low {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-low), #00c48c);
+    border-radius: 99px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Error */
+  .error-box {
+    background: rgba(255, 77, 109, 0.08);
+    border: 1px solid rgba(255, 77, 109, 0.25);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent-high);
+    display: none;
+    margin-top: 12px;
+  }
+
+  .error-box.visible { display: block; }
+
+  .range-delete {
+    background: none;
+    border: none;
+    color: var(--text-dimmer);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+    margin-left: auto;
+    line-height: 1;
+    transition: color 0.2s;
+    font-family: monospace;
+  }
+
+  .range-delete:hover { color: var(--accent-high); }
+
+  @media (max-width: 520px) {
+    .date-row { grid-template-columns: 1fr; }
+    .result-cards { grid-template-columns: 1fr; }
+    .range-add { grid-template-columns: 1fr 1fr; }
+    .range-add .btn { grid-column: span 2; }
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">⚡</div>
+    <h1>SONOFF Power Meter</h1>
+  </div>
+  <p class="subtitle">// Tariff analyser for SONOFF smart plug CSV exports</p>
+</header>
+
+<!-- Config Card -->
+<div class="card">
+  <div class="card-title">01 — Date Range</div>
+  <div class="date-row">
+    <div class="field">
+      <label>START DATE</label>
+      <input type="date" id="startDate">
+    </div>
+    <div class="field">
+      <label>END DATE</label>
+      <input type="date" id="endDate">
+    </div>
+  </div>
+</div>
+
+<!-- Low Tariff Ranges Card -->
+<div class="card">
+  <div class="card-title">02 — Low Tariff Hours (Weekdays)</div>
+  <div class="ranges-grid" id="rangesList"></div>
+  <div class="range-add" style="margin-top:16px">
+    <div class="field">
+      <label>FROM (hour)</label>
+      <input type="number" id="rangeStart" min="0" max="23" placeholder="e.g. 22">
+    </div>
+    <div class="field">
+      <label>TO (hour)</label>
+      <input type="number" id="rangeEnd" min="1" max="24" placeholder="e.g. 6">
+    </div>
+    <button class="btn btn-ghost" onclick="addRange()">+ Add</button>
+  </div>
+  <p style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dimmer);margin-top:10px">
+    Note: Sundays are always counted as low tariff.
+  </p>
+</div>
+
+<!-- Upload Card -->
+<div class="card">
+  <div class="card-title">03 — Upload CSV File</div>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="csvFile" accept=".csv" onchange="handleFile(this.files[0])">
+    <span class="drop-icon">📂</span>
+    <div class="drop-label">Drop your CSV here or click to browse</div>
+    <div class="drop-sub">Expected columns: date, time, consumption/KWh</div>
+    <div class="file-name" id="fileName"></div>
+  </div>
+  <div class="error-box" id="errorBox"></div>
+  <button class="btn-primary" id="calcBtn" onclick="calculate()" disabled>
+    Calculate Consumption
+  </button>
+</div>
+
+<!-- Results -->
+<div class="results" id="results">
+  <div class="result-cards">
+    <div class="result-card low">
+      <div class="result-label">🟢 Low Tariff</div>
+      <div class="result-value" id="lowVal">—<span class="result-unit">kWh</span></div>
+      <div class="result-pct" id="lowPct">—%</div>
+    </div>
+    <div class="result-card high">
+      <div class="result-label">🔴 High Tariff</div>
+      <div class="result-value" id="highVal">—<span class="result-unit">kWh</span></div>
+      <div class="result-pct" id="highPct">—%</div>
+    </div>
+  </div>
+  <div class="total-card">
+    <div>
+      <div class="total-label">Total Consumption</div>
+      <div class="bar-track" style="width:220px;margin-top:10px">
+        <div class="bar-fill-low" id="barFill" style="width:0%"></div>
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dimmer);margin-top:5px">
+        <span style="color:var(--accent-low)">■</span> Low &nbsp;
+        <span style="color:var(--accent-high)">■</span> High
+      </div>
+    </div>
+    <div class="total-value" id="totalVal">—<span class="result-unit" style="font-size:14px">kWh</span></div>
+  </div>
+</div>
+
+<script>
+  // ─── State ────────────────────────────────────────────────────────────────
+  let lowTariffRanges = [
+    { start: 0,  end: 7  }, // 00:00–07:00
+    { start: 13, end: 15 }, // 13:00–15:00
+    { start: 22, end: 24 }, // 22:00–24:00
+  ];
+
+  let csvFile = null;
+
+  // ─── Drag & Drop ──────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  function handleFile(file) {
+    if (!file || !file.name.endsWith('.csv')) {
+      showError('Please upload a valid .csv file.');
+      return;
+    }
+    csvFile = file;
+    document.getElementById('fileName').textContent = '✓ ' + file.name;
+    dropZone.classList.add('has-file');
+    clearError();
+    updateCalcBtn();
+  }
+
+  function updateCalcBtn() {
+    document.getElementById('calcBtn').disabled = !csvFile;
+  }
+
+  // ─── Ranges ───────────────────────────────────────────────────────────────
+  function renderRanges() {
+    const list = document.getElementById('rangesList');
+    list.innerHTML = lowTariffRanges.map((r, i) => `
+      <div class="range-item">
+        <span class="range-dot"></span>
+        ${String(r.start).padStart(2,'0')}:00 → ${String(r.end).padStart(2,'0')}:00
+        <button class="range-delete" onclick="removeRange(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function addRange() {
+    const s = parseInt(document.getElementById('rangeStart').value);
+    const e = parseInt(document.getElementById('rangeEnd').value);
+    if (isNaN(s) || isNaN(e) || s < 0 || s > 23 || e < 1 || e > 24) {
+      showError('Enter valid hours: start 0–23, end 1–24.');
+      return;
+    }
+    clearError();
+    lowTariffRanges.push({ start: s, end: e });
+    renderRanges();
+    document.getElementById('rangeStart').value = '';
+    document.getElementById('rangeEnd').value = '';
+  }
+
+  function removeRange(i) {
+    lowTariffRanges.splice(i, 1);
+    renderRanges();
+  }
+
+  // ─── Core Logic ───────────────────────────────────────────────────────────
+  function isLowTariff(startHour, endHour) {
+    // Mirrors original TS: overlap on either boundary qualifies the slot as low tariff
+    return lowTariffRanges.some(({ start, end }) =>
+      (startHour >= start && startHour < end) ||
+      (endHour > start && endHour <= end)
+    );
+  }
+
+  function parseDate(str) {
+    // Expects yyyy-MM-dd
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function calculate() {
+    clearError();
+    const startStr = document.getElementById('startDate').value;
+    const endStr   = document.getElementById('endDate').value;
+
+    if (!startStr || !endStr) { showError('Please select a date range.'); return; }
+    if (!csvFile)             { showError('Please upload a CSV file.'); return; }
+    if (!lowTariffRanges.length) { showError('Add at least one low tariff range.'); return; }
+
+    const startDate = parseDate(startStr);
+    const endDate   = parseDate(endStr);
+    if (startDate > endDate) { showError('Start date must be before end date.'); return; }
+
+    const reader = new FileReader();
+    reader.onload = e => processCSV(e.target.result, startDate, endDate);
+    reader.readAsText(csvFile);
+  }
+
+  function processCSV(text, startDate, endDate) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) { showError('CSV appears empty or has no data rows.'); return; }
+
+    // Parse header
+    const headers = parseCSVLine(lines[0]);
+    const dateCol = headers[0];
+    const timeIdx = headers.findIndex(h => h.toLowerCase().trim() === 'time');
+    const kwIdx   = headers.findIndex(h => h.toLowerCase().trim().includes('consumption'));
+
+    if (timeIdx === -1 || kwIdx === -1) {
+      showError(`Could not find required columns.\nFound: ${headers.join(', ')}\nExpected: time, consumption/KWh`);
+      return;
+    }
+
+    let low = 0, high = 0, skipped = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const cols = parseCSVLine(line);
+      if (cols.length < Math.max(timeIdx, kwIdx) + 1) { skipped++; continue; }
+
+      const rowDate = parseDate(cols[0].trim());
+      if (isNaN(rowDate)) { skipped++; continue; }
+      if (rowDate < startDate || rowDate > endDate) continue;
+
+      const isSunday = rowDate.getDay() === 0;
+
+      const timeParts = cols[timeIdx].trim().split('-');
+      if (timeParts.length < 2) { skipped++; continue; }
+      const sh = parseInt(timeParts[0].split(':')[0]);
+      const eh = parseInt(timeParts[1].split(':')[0]);
+      if (isNaN(sh) || isNaN(eh)) { skipped++; continue; }
+
+      const consumption = parseFloat(cols[kwIdx].replace(',', '.'));
+      if (isNaN(consumption)) { skipped++; continue; }
+
+      if (isSunday || isLowTariff(sh, eh)) {
+        low += consumption;
+      } else {
+        high += consumption;
+      }
+    }
+
+    const total = low + high;
+    if (total === 0) {
+      showError('No valid consumption data found in the selected date range.');
+      return;
+    }
+
+    showResults(low, high, total, skipped);
+  }
+
+  function parseCSVLine(line) {
+    // Handle quoted fields
+    const result = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+      else { cur += c; }
+    }
+    result.push(cur);
+    return result;
+  }
+
+  function showResults(low, high, total, skipped) {
+    const lowPct  = ((low  / total) * 100).toFixed(1);
+    const highPct = ((high / total) * 100).toFixed(1);
+
+    document.getElementById('lowVal').innerHTML  = low.toFixed(2)  + '<span class="result-unit">kWh</span>';
+    document.getElementById('highVal').innerHTML = high.toFixed(2) + '<span class="result-unit">kWh</span>';
+    document.getElementById('lowPct').textContent  = lowPct  + '% of total';
+    document.getElementById('highPct').textContent = highPct + '% of total';
+    document.getElementById('totalVal').innerHTML = total.toFixed(2) + '<span class="result-unit" style="font-size:14px">kWh</span>';
+
+    const results = document.getElementById('results');
+    results.classList.add('visible');
+
+    // Animate bar after a tick
+    setTimeout(() => {
+      document.getElementById('barFill').style.width = lowPct + '%';
+    }, 50);
+
+    results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    if (skipped > 0) {
+      showError(`⚠ ${skipped} row(s) were skipped due to missing or invalid data.`);
+    }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = msg;
+    box.classList.add('visible');
+  }
+
+  function clearError() {
+    document.getElementById('errorBox').classList.remove('visible');
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  renderRanges();
+
+  // Default dates: 15th of previous month → 15th of current month (both inclusive)
+  const today    = new Date();
+  const pad      = n => String(n).padStart(2, '0');
+  const fmt      = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 16);
+  const currMonth = new Date(today.getFullYear(), today.getMonth(), 15);
+  document.getElementById('startDate').value = fmt(prevMonth);
+  document.getElementById('endDate').value   = fmt(currMonth);
+</script>
+</body>
+</html>
